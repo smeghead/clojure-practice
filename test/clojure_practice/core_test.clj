@@ -78,10 +78,38 @@
       (is (some #(= (:value %) 0) cells)) ;; "A" の Cell
       (is (some #(= (:is-goal %) true) cells))))) ;; "B" の Cell
 
-;(deftest spread-goal-test
-;  (testing "ゴールの拡張"
-;    (let [board (create-board ["..."
-;                               ".B."
-;                               "..."])
-;          updated-board (spread-goal board)]
-;      (is (every? :isGoal (get-neighborhood-cells updated-board (->Point 1 1)))))))
+
+(deftest update-cell-test
+  (testing "指定したセルを確定させる"
+    (let [board (create-board ["A.#"
+                               "..B"
+                               "#.."])
+          board (update-cell board (->Point 0 0) (fn [c] (assoc c :fixed true)))
+          cell (get-cell board (->Point 0 0))]
+      (is (= (get cell :fixed) true)))))
+
+(deftest get-unfixed-smallest-cell-test
+  (testing "未確定のうち一番小さい値のCellを取得する"
+    (let [board (create-board ["A.#"
+                               "..B"
+                               "#.."])
+          board (update-cell board (->Point 0 0) (fn [c] (assoc c :fixed true)))
+          board (update-cell board (->Point 1 0) (fn [c] (assoc c :value 1)))
+          cell (get-unfixed-smallest-cell board)]
+      (is (= (get cell :point) (->Point 1 0))))))
+
+(deftest get-neighborhood-cells-test
+  (testing "隣りあうCellを取得する 0 0"
+    (let [board (create-board ["A...."
+                               ".#.#."
+                               "....B"])
+          cells (get-neighborhood-cells board (->Point 0 0))]
+      (is (= (get-in cells [0 :point]) (->Point 1 0))))))
+
+(deftest spread-goal-test
+  (testing "ゴールの拡張"
+    (let [board (create-board ["..."
+                               ".B."
+                               "..."])
+          updated-board (spread-goal board)]
+      (is (every? :is-goal (get-neighborhood-cells updated-board (->Point 1 1)))))))

@@ -35,22 +35,43 @@
 (defn get-cells [board]
   (filter #(instance? Cell %) (apply concat (:matrix board))))
 
-;(defn spread-goal [board]
-;  (let [goal (some #(when (:isGoal %) %) (get-cells board))]
-;
-;    (defn visible-cells [b p move-fn]
-;      (let [next-point (move-fn p)]
-;        (if (get-active-cell b next-point)
-;          (recur (update-cell b next-point #(assoc % :isGoal true))
-;                 next-point
-;                 move-fn)
-;          b)))
-;
-;    (let [move-fns [(fn [p] (->Point (:x p) (inc (:y p))))
-;                    (fn [p] (->Point (:x p) (dec (:y p))))
-;                    (fn [p] (->Point (inc (:x p)) (:y p)))
-;                    (fn [p] (->Point (dec (:x p)) (:y p)))]]
-;      (reduce (fn [acc fn] (visible-cells acc (:point goal) fn)) board move-fns))))
+(defn update-cell [board point fn]
+  (update-in board [:matrix (:y point) (:x point)] fn))
+
+(defn get-unfixed-smallest-cell [b]
+  (let [cells (get-cells b)
+        cells (filter (fn [c] (= (:fixed c) false)) cells)
+        sorted (sort-by :value cells)
+        smallest (first sorted)]
+    (if (not= (:value smallest) Integer/MAX_VALUE)
+      smallest)))
+
+(defn get-active-cell [b p]
+  (get-cell b p))
+
+(defn get-neighborhood-cells [b p]
+  (vec (filter identity [(get-active-cell b (->Point (dec (:x p)) (:y p)))
+                         (get-active-cell b (->Point (inc (:x p)) (:y p)))
+                         (get-active-cell b (->Point (:x p) (dec (:y p))))
+                         (get-active-cell b (->Point (:x p) (inc (:y p))))])))
+
+
+(defn spread-goal [board]
+  (let [goal (some #(when (:is-goal %) %) (get-cells board))]
+
+    (defn visible-cells [b p move-fn]
+      (let [next-point (move-fn p)]
+        (if (get-active-cell b next-point)
+          (recur (update-cell b next-point #(assoc % :is-goal true))
+                 next-point
+                 move-fn)
+          b)))
+
+    (let [move-fns [(fn [p] (->Point (:x p) (inc (:y p))))
+                    (fn [p] (->Point (:x p) (dec (:y p))))
+                    (fn [p] (->Point (inc (:x p)) (:y p)))
+                    (fn [p] (->Point (dec (:x p)) (:y p)))]]
+      (reduce (fn [acc fn] (visible-cells acc (:point goal) fn)) board move-fns))))
 
 
 (defn -main
