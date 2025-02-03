@@ -28,6 +28,19 @@
                       lines))]
     (->Board matrix)))
 
+(defn display-board [board]
+  (->> (:matrix board)
+       (map (fn [row]
+              (apply str (map (fn [tile]
+                                (cond
+                                  (instance? Cell tile) (str (if (:is-goal tile) "G"
+                                                                 (if (= (:value tile) Integer/MAX_VALUE) "*"
+                                                                     (:value tile)))
+                                                             (if (:fixed tile) "+" "-") " ")
+                                  :else "## "))
+                              row))))
+       (clojure.string/join "\n")))
+
 (defn get-cell [board point]
   (let [tile (get-in (:matrix board) [(:y point) (:x point)])]
     (when (instance? Cell tile) tile)))
@@ -72,6 +85,46 @@
                     (fn [p] (->Point (inc (:x p)) (:y p)))
                     (fn [p] (->Point (dec (:x p)) (:y p)))]]
       (reduce (fn [acc fn] (visible-cells acc (:point goal) fn)) board move-fns))))
+
+(defn seek [b]
+  (let [smallest-cell (get-unfixed-smallest-cell b)]
+    (if smallest-cell
+      (let [b (update-cell b (:point smallest-cell) #(assoc % :fixed true))
+            neighbor-cells (filter #(false? (:fixed %)) (get-neighborhood-cells b (:point smallest-cell)))]
+        (reduce
+          (fn [b-acc c]
+            (update-cell b-acc (:point c)
+                         #(if (> (:value %) (:value smallest-cell))
+                            (assoc % :value (inc (:value smallest-cell)))
+                            %)))
+          b
+          neighbor-cells)))))
+
+(defn all-fixed? [b]
+  (every? :fixed (get-cells b)))
+
+(defn fixed-goal [b]
+  (let [cells (get-cells b)
+        fixed-goal-cell (first (filter #(and (:fixed %) (:is-goal %)) cells))]
+    (if fixed-goal-cell
+      (:value fixed-goal-cell))))
+
+(defn start [lines]
+ (let [board (spread-goal (create-board lines))]
+   (defn rec [b]
+;     (println "")
+;     (println (display-board b))
+     (let [small-cell (get-unfixed-smallest-cell b)]
+       (if (nil? small-cell)
+         -1
+         (let [answer (fixed-goal b)]
+           (cond
+             (= answer Integer/MAX_VALUE) -1
+             (integer? answer) answer
+             (all-fixed? b) -1
+             :else (recur (seek b)))))))
+
+   (rec board)))
 
 
 (defn -main
